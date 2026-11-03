@@ -1,0 +1,19 @@
+[Unit]
+Description=KVL Hosting Panel web (Next.js)
+After=network.target
+
+[Service]
+User=kvl
+Group=kvl
+WorkingDirectory=/opt/kvl/current/frontend
+Environment=NODE_ENV=production
+Environment=API_ORIGIN=http://127.0.0.1:8000
+ExecStart=/usr/bin/npm run start -- -p 3000 -H 127.0.0.1
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=Run KVL periodic sweeps every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=5s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

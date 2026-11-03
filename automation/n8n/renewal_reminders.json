@@ -1,0 +1,286 @@
+{
+  "name": "KVL - Subscription renewal reminders",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kvl-renewal-reminders",
+        "responseMode": "onReceived",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "name": "KVL webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "kvl-renewal-reminders"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verify the KVL HMAC signature and timestamp window before doing anything else.\nconst crypto = require('crypto');\nconst secret = $env.KVL_N8N_WEBHOOK_SECRET;\nif (!secret) throw new Error('KVL_N8N_WEBHOOK_SECRET is not set in the n8n environment');\nconst h = $input.first().json.headers || {};\nconst ts = String(h['x-kvl-timestamp'] || '');\nconst sig = String(h['x-kvl-signature'] || '');\nconst raw = $input.first().json.rawBody ? $input.first().json.rawBody.toString() : JSON.stringify($input.first().json.body);\nif (!ts || Math.abs(Date.now() / 1000 - Number(ts)) > 300) throw new Error('stale or missing timestamp');\nconst expected = crypto.createHmac('sha256', secret).update(ts + '.' + raw).digest('hex');\nconst a = Buffer.from(expected), b = Buffer.from(sig);\nif (a.length !== b.length || !crypto.timingSafeEqual(a, b)) throw new Error('invalid KVL signature');\nconst body = $input.first().json.body;\nreturn [{ json: { event: body, correlation_id: h['x-kvl-correlation-id'], event_id: h['x-kvl-event-id'] } }];\n"
+      },
+      "name": "Verify KVL signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build a signed request for the KVL API (HMAC-SHA256 over \"<timestamp>.<body>\").\nconst crypto = require('crypto');\nconst secret = $env.KVL_N8N_WEBHOOK_SECRET;\nconst ctx = $('Verify KVL signature').first().json;\nconst payload = {event_type: 'notification.send', correlation_id: ctx.correlation_id, data: {tenant_id: ctx.event.tenant_id, template: 'renewal_reminder', subject: 'Your subscription renews soon', message: 'Your hosting subscription will renew shortly. Check Billing for details.'}};\nconst body = JSON.stringify(payload);\nconst ts = String(Math.floor(Date.now() / 1000));\nconst signature = crypto.createHmac('sha256', secret).update(ts + '.' + body).digest('hex');\nreturn [{ json: { body, ts, signature, key: 'act:' + ctx.event_id } }];\n"
+      },
+      "name": "Prepare notification request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.KVL_API_BASE_URL }}/api/v1/automation/inbound",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-KVL-Timestamp",
+              "value": "={{ $json.ts }}"
+            },
+            {
+              "name": "X-KVL-Signature",
+              "value": "={{ $json.signature }}"
+            },
+            {
+              "name": "X-KVL-Idempotency-Key",
+              "value": "={{ $json.key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "name": "Ask KVL to notify tenant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        660,
+        0
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build a signed request for the KVL API (HMAC-SHA256 over \"<timestamp>.<body>\").\nconst crypto = require('crypto');\nconst secret = $env.KVL_N8N_WEBHOOK_SECRET;\nconst ctx = $('Verify KVL signature').first().json;\nconst payload = {event_type: 'workflow.execution', correlation_id: ctx.correlation_id, data: {workflow_key: 'renewal_reminders', status: 'succeeded', execution_id: String($execution.id)}};\nconst body = JSON.stringify(payload);\nconst ts = String(Math.floor(Date.now() / 1000));\nconst signature = crypto.createHmac('sha256', secret).update(ts + '.' + body).digest('hex');\nreturn [{ json: { body, ts, signature, key: 'ok:' + ctx.event_id } }];\n"
+      },
+      "name": "Prepare success report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.KVL_API_BASE_URL }}/api/v1/automation/inbound",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-KVL-Timestamp",
+              "value": "={{ $json.ts }}"
+            },
+            {
+              "name": "X-KVL-Signature",
+              "value": "={{ $json.signature }}"
+            },
+            {
+              "name": "X-KVL-Idempotency-Key",
+              "value": "={{ $json.key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "name": "Report success to KVL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1100,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build a signed request for the KVL API (HMAC-SHA256 over \"<timestamp>.<body>\").\nconst crypto = require('crypto');\nconst secret = $env.KVL_N8N_WEBHOOK_SECRET;\nconst ctx = $('Verify KVL signature').first().json;\nconst payload = {event_type: 'workflow.execution', correlation_id: ctx.correlation_id, data: {workflow_key: 'renewal_reminders', status: 'failed', execution_id: String($execution.id), error: String(($input.first().json.error && ($input.first().json.error.message || $input.first().json.error)) || 'workflow step failed').slice(0, 480)}};\nconst body = JSON.stringify(payload);\nconst ts = String(Math.floor(Date.now() / 1000));\nconst signature = crypto.createHmac('sha256', secret).update(ts + '.' + body).digest('hex');\nreturn [{ json: { body, ts, signature, key: 'fail:' + ctx.event_id } }];\n"
+      },
+      "name": "Prepare failure report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.KVL_API_BASE_URL }}/api/v1/automation/inbound",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-KVL-Timestamp",
+              "value": "={{ $json.ts }}"
+            },
+            {
+              "name": "X-KVL-Signature",
+              "value": "={{ $json.signature }}"
+            },
+            {
+              "name": "X-KVL-Idempotency-Key",
+              "value": "={{ $json.key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "name": "Report failure to KVL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1100,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "KVL webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify KVL signature",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify KVL signature": {
+      "main": [
+        [
+          {
+            "node": "Prepare notification request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare notification request": {
+      "main": [
+        [
+          {
+            "node": "Ask KVL to notify tenant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask KVL to notify tenant": {
+      "main": [
+        [
+          {
+            "node": "Prepare success report",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare failure report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare success report": {
+      "main": [
+        [
+          {
+            "node": "Report success to KVL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare failure report": {
+      "main": [
+        [
+          {
+            "node": "Report failure to KVL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "executionTimeout": 120
+  },
+  "meta": {
+    "description": "Triggered by KVL events: subscription.renewal_reminder. Verifies the HMAC signature, acts only through the signed KVL API (allow-listed event types), and reports the outcome. No secrets are stored in this file; credentials are referenced by name.",
+    "kvl_workflow_key": "renewal_reminders"
+  },
+  "tags": [
+    {
+      "name": "kvl"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+[Unit]
+Description=KVL server agent (restricted, allow-listed operations)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=kvl-agent
+Group=kvl-agent
+WorkingDirectory=/opt/kvl-agent
+EnvironmentFile=/etc/kvl/agent.env
+ExecStart=/opt/kvl-agent/.venv/bin/python -m kvl_agent
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/kvl-agent
+
+[Install]
+WantedBy=multi-user.target

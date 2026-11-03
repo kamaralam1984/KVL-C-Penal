@@ -1,0 +1,13 @@
+[Unit]
+Description=KVL periodic sweeps (maintenance, billing, automation, SSL, backups)
+
+[Service]
+Type=oneshot
+User=kvl
+WorkingDirectory=/opt/kvl/current/backend
+EnvironmentFile=/etc/kvl/api.env
+ExecStart=/opt/kvl/current/backend/.venv/bin/python -m app.services.scheduler
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
