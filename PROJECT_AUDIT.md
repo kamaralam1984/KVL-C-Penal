@@ -35,7 +35,8 @@ Admin/customers/RBAC/sessions (`auth`, `rbac`, `tenants`, `staff`), hosting acco
 | Agent tests | `pytest -q` (in `agent/`, using backend venv) | **239 passed** in 30.9 s |
 | Frontend lint | `npx eslint` | exit 0, no output |
 | Frontend types | `npx tsc --noEmit` | no errors |
-| Frontend build, Playwright e2e | not re-run in this session | unverified today (memory notes 11 e2e green on 2026-11-02) |
+| Frontend build | `npm run build` | passed (all routes built) |
+| Playwright e2e | not re-run in this session | unverified today (11 were green on 2026-11-02) |
 
 ## Gaps found
 1. Required top-level docs from the brief were missing (README was a one-line stub) — added in this branch.
