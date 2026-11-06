@@ -31,7 +31,7 @@ Admin/customers/RBAC/sessions (`auth`, `rbac`, `tenants`, `staff`), hosting acco
 ## Verification run on 2026-11-06 (Ubuntu only)
 | Check | Command | Result |
 |---|---|---|
-| Backend tests | `USE_MIGRATIONS=1 REDIS_URL=redis://127.0.0.1:1/0 TEST_DATABASE_URL=… pytest -q` (in `backend/`) | Full run completed, every progress dot green, no failures. A second run's final summary line was lost to a timeout, so an exact "N passed" count was **not** captured; 392 `def test_` functions exist. |
+| Backend tests | `USE_MIGRATIONS=1 REDIS_URL=redis://127.0.0.1:1/0 TEST_DATABASE_URL=… pytest -q` (in `backend/`) | **549 passed** (on branch `feature/macos-staging-setup`, includes 5 new bootstrap-owner tests; 544 before) |
 | Agent tests | `pytest -q` (in `agent/`, using backend venv) | **239 passed** in 30.9 s |
 | Frontend lint | `npx eslint` | exit 0, no output |
 | Frontend types | `npx tsc --noEmit` | no errors |

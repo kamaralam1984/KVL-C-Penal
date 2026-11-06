@@ -15,6 +15,8 @@
 | 9 Plans/billing | Plans, invoices, coupons, Razorpay (mocked), idempotency | `test_billing`, `test_razorpay` |
 | Extras | Support, KB/announcements, resellers, API keys, webhooks, n8n automation | corresponding `test_*.py` |
 
-Test run on 2026-11-06: backend suite green (count not captured), agent 239 passed, frontend eslint and `tsc --noEmit` clean. Details and caveats: `PROJECT_AUDIT.md`.
+Test run on 2026-11-06: backend suite 549 passed, agent 239 passed, frontend eslint and `tsc --noEmit` clean. Details and caveats: `PROJECT_AUDIT.md`.
 
 Not yet re-verified today: Next.js production build, Playwright e2e.
+
+| Owner bootstrap | `python -m app.bootstrap_owner`: one-time first super_admin for non-dev envs (hidden password, policy, audit, refuses a second owner) | `backend/tests/test_bootstrap_owner.py` (5 pass); CLI run on a fresh migrated scratch DB |

@@ -59,7 +59,12 @@ set -a; . "$KVL_HOME/etc/api.env"; set +a
 cd ../frontend && npm ci && npm run build
 cd ../agent && python3 -m venv .venv && .venv/bin/pip install .
 ```
-**Open item:** the repo documents no production-safe way to create the first owner account (`backend/scripts/dev_seed.py` is dev-only: do **not** run it on staging). This must be added before the panel is usable on the Mac. Tracked in `PENDING_TASKS.md`.
+### First owner (one-time)
+```bash
+cd "$KVL_HOME/app/backend" && set -a && . "$KVL_HOME/etc/api.env" && set +a
+.venv/bin/python -m app.bootstrap_owner --email you@example.com --name "Your Name"   # hidden password prompt, typed twice
+```
+Creates the platform `super_admin` (email pre-verified) and an audit event. It refuses to run if an owner already exists, applies the normal password policy, never takes the password as an argument and never prints it. Use `--password-stdin` only for automation. After the first login, enable 2FA in the panel. Do **not** run `backend/scripts/dev_seed.py` on staging (dev-only demo accounts).
 
 ## 7. Render and load launchd agents
 ```bash

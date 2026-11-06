@@ -10,7 +10,7 @@ Production rule: no live customer hosting, no production domain migration, no ch
 5. Secrets (Razorpay test keys, Cloudflare token, SMTP, n8n) go in the server `.env` only — never chat or Git. Owner handles SSH keys.
 
 ## Not blocked, not done
-- **First-owner bootstrap for non-dev environments** is undocumented (`dev_seed.py` is dev-only); required before the panel is usable on staging. Mac setup guide: `docs/MACOS_STAGING_SETUP.md` (written, not yet run on a Mac).
+- Mac setup guide `docs/MACOS_STAGING_SETUP.md` is written but not yet run on a Mac. (First-owner bootstrap is done: `python -m app.bootstrap_owner`.)
 - Re-run Next.js `npm run build` and Playwright e2e and record results.
 - Capture an exact backend test count (`pytest -q | tail -1`) in CI output.
 - Add Dockerfiles / compose for Linux service simulation (brief §6).
