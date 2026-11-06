@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.kvl.staging.agent</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-c</string>
+    <string>set -a; . __KVL_HOME__/etc/agent.env; set +a; exec __KVL_HOME__/app/agent/.venv/bin/python -m kvl_agent run</string>
+  </array>
+  <key>WorkingDirectory</key><string>__KVL_HOME__/app/agent</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>__KVL_HOME__/var/log/agent.log</string>
+  <key>StandardErrorPath</key><string>__KVL_HOME__/var/log/agent.err.log</string>
+</dict>
+</plist>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.kvl.staging.postgres</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-c</string>
+    <string>exec __PG_BIN__/postgres -D __KVL_HOME__/var/pgdata -p 54330 -k __KVL_HOME__/var/sock -c listen_addresses=127.0.0.1</string>
+  </array>
+  <key>WorkingDirectory</key><string>__KVL_HOME__/var</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>__KVL_HOME__/var/log/postgres.log</string>
+  <key>StandardErrorPath</key><string>__KVL_HOME__/var/log/postgres.err.log</string>
+</dict>
+</plist>
