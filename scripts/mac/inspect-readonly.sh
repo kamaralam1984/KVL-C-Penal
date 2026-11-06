@@ -29,8 +29,10 @@ have vm_stat && run vm_stat
 run uptime
 
 section "Tool versions (blank = not installed)"
-for t in brew git node npm python3 python3.11 python3.12 python3.13 python3.14 pip3 psql pg_ctl postgres redis-server redis-cli nginx php php-fpm mysql mysqld mariadb mariadbd pm2 certbot docker; do
-  if have "$t"; then printf '%-14s %s  ->  ' "$t" "$(command -v "$t")"; "$t" --version 2>&1 | head -n 1 || true
+for t in brew port git node npm python3 python3.11 python3.12 python3.13 python3.14 pip3 psql pg_ctl postgres redis-server redis-cli nginx php php-fpm mysql mysqld mariadb mariadbd pm2 certbot docker; do
+  if [ "$t" = pm2 ]; then printf '%-14s %s  ->  (version skipped: pm2 --version would start a PM2 daemon)\n' "$t" "$(command -v "$t")"
+  elif [ "$t" = nginx ]; then printf '%-14s %s  ->  ' "$t" "$(command -v "$t")"; nginx -v 2>&1 | head -n 1
+  elif have "$t"; then printf '%-14s %s  ->  ' "$t" "$(command -v "$t")"; "$t" --version 2>&1 | head -n 1 || true
   else printf '%-14s (not found)\n' "$t"; fi
 done
 have nginx && { printf '$ nginx -V\n'; nginx -V 2>&1 | head -n 3; }
@@ -50,11 +52,15 @@ section "launchd jobs mentioning relevant services (user domain)"
 have launchctl && launchctl list 2>/dev/null | grep -Ei 'nginx|php|mysql|maria|redis|postgres|pm2|kvl' | head -n 30
 ls ~/Library/LaunchAgents 2>/dev/null | head -n 40
 
+section "MacPorts packages (if port present)"
+have port && port installed requested 2>/dev/null | grep -Ei 'nginx|php|mariadb|mysql|redis|postgres|nodejs|python3|certbot|pm2' | head -n 40
+ls -d /opt/local/lib/postgresql*/bin /opt/local/lib/mariadb*/bin 2>/dev/null
+
 section "Homebrew packages (if brew present)"
 have brew && { brew --prefix; brew list --versions 2>/dev/null | grep -Ei 'nginx|php|mysql|maria|redis|postgres|node|python|certbot' | head -n 40; brew services list 2>/dev/null | head -n 30; }
 
 section "nginx layout (file NAMES and server_name/listen/root lines only)"
-for d in /opt/homebrew/etc/nginx /usr/local/etc/nginx /etc/nginx; do
+for d in /opt/local/etc/nginx /opt/homebrew/etc/nginx /usr/local/etc/nginx /etc/nginx; do
   if [ -d "$d" ]; then
     echo "dir: $d"; ls -la "$d" 2>&1 | head -n 30
     for sub in servers sites-enabled conf.d; do [ -d "$d/$sub" ] && { echo "-- $d/$sub"; ls -la "$d/$sub" 2>&1 | head -n 40; }; done
@@ -63,12 +69,24 @@ for d in /opt/homebrew/etc/nginx /usr/local/etc/nginx /etc/nginx; do
 done
 
 section "Existing sites / document roots (directory names only)"
-ls -d /Library/WebServer/Documents /opt/homebrew/var/www /usr/local/var/www ~/Sites /var/www 2>/dev/null
+ls -d /Library/WebServer/Documents /opt/local/www /opt/local/www/* /opt/homebrew/var/www /usr/local/var/www ~/Sites /var/www 2>/dev/null
 
 section "Sizes of key data dirs (read-only, may be slow)"
-for d in /opt/homebrew/var/mysql /usr/local/var/mysql /opt/homebrew/var/postgresql* /usr/local/var/postgres* /opt/homebrew/var/db/redis /usr/local/var/db/redis; do
+for d in /opt/local/var/db/mariadb* /opt/local/var/db/postgresql* /opt/local/var/db/redis* /opt/homebrew/var/mysql /usr/local/var/mysql /opt/homebrew/var/postgresql* /usr/local/var/postgres* /opt/homebrew/var/db/redis /usr/local/var/db/redis; do
   [ -e "$d" ] && du -sh "$d" 2>/dev/null
 done
+
+section "System launchd daemons mentioning relevant services (plist FILE NAMES only)"
+ls /Library/LaunchDaemons 2>/dev/null | grep -Ei 'nginx|php|mysql|maria|redis|postgres|pm2|cloudflared|macports' | head -n 30
+
+section "Listening processes on 3000/8000/5432/3306 (name + command only)"
+for p in 3000 8000 5432 3306 6379 80; do
+  pid=$(lsof -nP -iTCP:"$p" -sTCP:LISTEN -t 2>/dev/null | head -n 1); [ -n "$pid" ] && { printf 'port %s -> ' "$p"; ps -o pid=,user=,command= -p "$pid" | cut -c1-160; }
+done
+
+section "Memory pressure (read-only)"
+have memory_pressure && memory_pressure 2>&1 | tail -n 4
+have sysctl && sysctl -n vm.swapusage
 
 section "Network (hostname only; no keys)"
 hostname; have scutil && scutil --get LocalHostName 2>/dev/null

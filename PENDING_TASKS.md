@@ -3,7 +3,7 @@
 ## Blocked on owner approval (nothing below may start without an explicit "haan")
 Production rule: no live customer hosting, no production domain migration, no change to the Mac server until the gate in `PRODUCTION_READINESS.md` passes.
 
-1. **Read-only inspection of the Mac server** — OS version, nginx, PHP-FPM, Redis, MariaDB, disk, ports, existing sites. Open question for owner: do they paste command output (safer) or may Claude use SSH? Is the Mac the staging machine or a separate one?
+1. **Read-only inspection of the Mac server** (first pass done 2026-11-06 by the owner; nginx/site layout section was empty because the script only knew Homebrew paths - fixed, rerun needed) — OS version, nginx, PHP-FPM, Redis, MariaDB, disk, ports, existing sites. Open question for owner: do they paste command output (safer) or may Claude use SSH? Is the Mac the staging machine or a separate one?
 2. **Back up Mac configs and DBs** before any install.
 3. **Staging install** on a separate user/port/domain (Postgres, Redis, API, web, agent, scheduler) per `docs/runbooks/deployment.md`. Brief §6: Mac is not automatically the final production host; a Linux production plan is needed.
 4. **Real-service tests**: agent with real nginx, Let's Encrypt, backup + **restore drill**, Razorpay test mode, SMTP, Cloudflare scoped token, n8n.

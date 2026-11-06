@@ -2,7 +2,12 @@
 
 > **Scope.** A *staging* copy of the KVL panel on the Mac, isolated from the Mac's live sites. **Not production. No customer hosting, no real domains.** Every step that changes the Mac needs the owner's explicit "haan". This guide has **not been run on a Mac yet**: commands are written from the repository and standard macOS/Homebrew behaviour and are unverified until the inspection in step 1.
 >
-> The Mac runs macOS Big Sur (per the handoff brief). systemd units in `ops/systemd/` do **not** apply; this guide uses launchd user agents in `ops/launchd/` instead. Final production should be a separate Linux host (brief §6).
+> Inspected on 2026-11-06: the iMac Pro is **macOS 13.7.8 (Ventura), Intel, 4 cores, 8 GB RAM**, with **MacPorts** (no Homebrew). systemd units in `ops/systemd/` do **not** apply; this guide uses launchd user agents in `ops/launchd/` instead. Final production should be a separate Linux host (brief §6).
+
+## What is already on the Mac (from the 2026-11-06 inspection) - DO NOT TOUCH
+nginx 1.30 and PHP 8.3 FPM (root/nobody, system daemons), MariaDB 10.11, PostgreSQL 16 (an **existing cluster**, running), Redis 7.4 on 6379, two PM2 daemons (`kvl`, `kvlhost`; test Node apps under `/opt/local/www/nodejs-apps`), `cloudflared` (a Cloudflare tunnel, so sites are reachable from outside), and unknown listeners on **127.0.0.1:8000 (Python) and :3000 (Node)**. Staging therefore uses *different* ports and its *own* Postgres/Redis; it must not reuse or restart any of these.
+
+**Memory warning:** only ~16 MB RAM was free during inspection (8 GB total, heavy swap/compression). Staging adds Postgres, Redis, one uvicorn worker, Next.js and the agent (rough estimate several hundred MB; not measured). Watch `memory_pressure` and live-site latency; stop staging at once if the live sites slow down. A separate staging machine/VPS is safer than this Mac.
 
 ## Isolation design
 Everything lives under one directory, `KVL_HOME` (default `~/kvl-staging`), run as your normal (non-root) user via launchd **user agents**. Nothing touches the Mac's existing nginx, PHP-FPM, MariaDB, Redis, ports 80/443 or system LaunchDaemons.
@@ -27,7 +32,11 @@ Copy `scripts/mac/inspect-readonly.sh` to the Mac, run `bash inspect-readonly.sh
 `bash scripts/mac/backup-configs.sh --yes` (add `--with-mariadb` only if you want a DB dump and `~/.my.cnf` has credentials). Creates `~/kvl-backups/<timestamp>/` with checksums. Back up website document roots separately. Keep backups out of Git.
 
 ## 3. Prerequisites (Homebrew; may compile from source on Big Sur and take long)
-Need: Python ≥ 3.11 (agent `requires-python`; the backend lock was produced on **3.14**, so verify `pip install -r requirements.lock` works on the Mac's Python before going further), Node (Next 16 needs a current LTS), PostgreSQL (any recent; example uses `postgresql@16`), Redis. Install only what is missing, and **never** `brew upgrade` existing services. Use `brew install <formula>` without `brew services start` (the plists run staging copies instead).
+Already present: Python **3.14.10** and 3.12 (`/opt/local/bin`; do **not** use the system 3.9), PostgreSQL 16 binaries (`/opt/local/lib/postgresql16/bin`, used only to create a *new* cluster), Redis 7.4 (`/opt/local/bin/redis-server`). Missing: **Node >= 20.9** (the default nvm Node is 18.20.8, too old for Next 16). Install a second Node into nvm only (user-local, does not change the default used by the existing apps):
+```bash
+nvm install 22          # then: export NODE_BIN="$(dirname "$(nvm which 22)")"
+```
+The app was developed on PostgreSQL 18; **Postgres 16 compatibility is unverified**, so run the migrations and tests (step 6) before trusting it. Never run `port upgrade` / `port install` on anything existing; use `python3.14 -m venv` for the backend. Whether the Python wheels install on macOS 13 Intel is unverified until step 6.
 
 ## 4. Directories and env files
 ```bash
@@ -41,7 +50,7 @@ Edit `api.env`: generate **new** `SECRET_KEY`, `ENCRYPTION_KEY` and DB password 
 
 ## 5. Staging PostgreSQL
 ```bash
-PGBIN=/opt/homebrew/opt/postgresql@16/bin       # adjust to what step 1 showed
+PGBIN=/opt/local/lib/postgresql16/bin     # binaries only; the existing running cluster is NOT used or modified
 $PGBIN/initdb -D "$KVL_HOME/var/pgdata" -U postgres --auth-local=trust --auth-host=scram-sha-256
 ```
 Start it through launchd (step 7), then create role and DB on port **54330**:
@@ -52,12 +61,12 @@ $PGBIN/psql -h 127.0.0.1 -p 54330 -U postgres -c "CREATE DATABASE kvl_panel_stag
 
 ## 6. Backend and frontend
 ```bash
-cd "$KVL_HOME/app/backend" && python3 -m venv .venv && .venv/bin/pip install -r requirements.lock
+cd "$KVL_HOME/app/backend" && /opt/local/bin/python3.14 -m venv .venv && .venv/bin/pip install -r requirements.lock
 set -a; . "$KVL_HOME/etc/api.env"; set +a
 .venv/bin/alembic upgrade head        # new empty DB, so no data at risk
 .venv/bin/python -m app.seed
 cd ../frontend && npm ci && npm run build
-cd ../agent && python3 -m venv .venv && .venv/bin/pip install .
+cd ../agent && /opt/local/bin/python3.14 -m venv .venv && .venv/bin/pip install .
 ```
 ### First owner (one-time)
 ```bash
@@ -68,12 +77,12 @@ Creates the platform `super_admin` (email pre-verified) and an audit event. It r
 
 ## 7. Render and load launchd agents
 ```bash
-bash scripts/mac/render-launchd.sh "$KVL_HOME" "$KVL_HOME/launchd" "$PGBIN" "$(command -v redis-server)"
+bash scripts/mac/render-launchd.sh "$KVL_HOME" "$KVL_HOME/launchd" "$PGBIN" /opt/local/bin/redis-server "$NODE_BIN"
 less "$KVL_HOME"/launchd/*.plist          # review every file
 cp "$KVL_HOME"/launchd/com.kvl.staging.*.plist ~/Library/LaunchAgents/
 for s in postgres redis api web; do launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.kvl.staging.$s.plist; done
 ```
-Load `scheduler` and `agent` after enrolment (step 8). Logs: `$KVL_HOME/var/log/*.log`. (`launchctl bootstrap` is the modern form; on older macOS use `launchctl load -w <plist>`; confirm which works on Big Sur.)
+Load `scheduler` and `agent` after enrolment (step 8). User launchd agents run only while user `kvl` is logged in on the GUI (it is, at the console); after a reboot they start after that login. Logs: `$KVL_HOME/var/log/*.log`. (`launchctl bootstrap` is the modern form; on older macOS use `launchctl load -w <plist>`; confirm which works on Big Sur.)
 
 ## 8. Smoke tests, then agent enrolment
 ```bash

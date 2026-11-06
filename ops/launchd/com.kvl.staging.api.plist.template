@@ -7,7 +7,7 @@
   <array>
     <string>/bin/bash</string>
     <string>-c</string>
-    <string>set -a; . __KVL_HOME__/etc/api.env; set +a; exec __KVL_HOME__/app/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 18000 --workers 2 --proxy-headers</string>
+    <string>set -a; . __KVL_HOME__/etc/api.env; set +a; exec __KVL_HOME__/app/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 18000 --workers 1 --proxy-headers</string>
   </array>
   <key>WorkingDirectory</key><string>__KVL_HOME__/app/backend</string>
   <key>RunAtLoad</key><true/>

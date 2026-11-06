@@ -30,7 +30,8 @@ copy_if() { # copy_if <src> : copy a dir or file when it exists
   cp -Rp "$src" "$DEST/$rel" 2>>"$DEST/errors.log" && echo "copied $src" || echo "SKIPPED (unreadable) $src"
 }
 
-for p in /opt/homebrew/etc/nginx /usr/local/etc/nginx \
+for p in /opt/local/etc/nginx /opt/local/etc/php83 /opt/local/etc/mariadb-10.11 /opt/local/etc/redis.conf /opt/local/etc/redis \
+         /opt/homebrew/etc/nginx /usr/local/etc/nginx \
          /opt/homebrew/etc/php /usr/local/etc/php \
          /opt/homebrew/etc/my.cnf /opt/homebrew/etc/my.cnf.d /usr/local/etc/my.cnf /usr/local/etc/my.cnf.d \
          /opt/homebrew/etc/redis.conf /usr/local/etc/redis.conf \
@@ -42,8 +43,9 @@ done
 { date; sw_vers 2>/dev/null || true; command -v brew >/dev/null && brew list --versions 2>/dev/null || true; } > "$DEST/state.txt"
 
 if [ "$WITH_MARIADB" = 1 ]; then
-  if command -v mysqldump >/dev/null 2>&1; then
-    mysqldump --all-databases --single-transaction --routines --events > "$DEST/mariadb-all.sql" \
+  MYSQLDUMP="$(command -v mysqldump || ls /opt/local/lib/mariadb*/bin/mysqldump 2>/dev/null | head -n 1 || true)"
+  if [ -n "$MYSQLDUMP" ]; then
+    "$MYSQLDUMP" --all-databases --single-transaction --routines --events > "$DEST/mariadb-all.sql" \
       && echo "MariaDB dump written" || echo "MariaDB dump FAILED (check ~/.my.cnf credentials)"
   else
     echo "mysqldump not found; skipping MariaDB dump"

@@ -7,7 +7,7 @@
   <array>
     <string>/bin/bash</string>
     <string>-c</string>
-    <string>export NODE_ENV=production API_ORIGIN=http://127.0.0.1:18000; exec npm run start -- -p 13000 -H 127.0.0.1</string>
+    <string>export PATH=__NODE_BIN__:/usr/bin:/bin NODE_ENV=production API_ORIGIN=http://127.0.0.1:18000; exec __NODE_BIN__/npm run start -- -p 13000 -H 127.0.0.1</string>
   </array>
   <key>WorkingDirectory</key><string>__KVL_HOME__/app/frontend</string>
   <key>RunAtLoad</key><true/>
