@@ -31,7 +31,7 @@ Copy `scripts/mac/inspect-readonly.sh` to the Mac, run `bash inspect-readonly.sh
 ## 2. Backup existing configs (copy-only)
 `bash scripts/mac/backup-configs.sh --yes` (add `--with-mariadb` only if you want a DB dump and `~/.my.cnf` has credentials). Creates `~/kvl-backups/<timestamp>/` with checksums. Back up website document roots separately. Keep backups out of Git.
 
-## 3. Prerequisites (Homebrew; may compile from source on Big Sur and take long)
+## 3. Prerequisites (MacPorts is already installed; nothing needs compiling except Node via nvm, which uses prebuilt binaries)
 Already present: Python **3.14.10** and 3.12 (`/opt/local/bin`; do **not** use the system 3.9), PostgreSQL 16 binaries (`/opt/local/lib/postgresql16/bin`, used only to create a *new* cluster), Redis 7.4 (`/opt/local/bin/redis-server`). Missing: **Node >= 20.9** (the default nvm Node is 18.20.8, too old for Next 16). Install a second Node into nvm only (user-local, does not change the default used by the existing apps):
 ```bash
 nvm install 22          # then: export NODE_BIN="$(dirname "$(nvm which 22)")"
@@ -82,7 +82,7 @@ less "$KVL_HOME"/launchd/*.plist          # review every file
 cp "$KVL_HOME"/launchd/com.kvl.staging.*.plist ~/Library/LaunchAgents/
 for s in postgres redis api web; do launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.kvl.staging.$s.plist; done
 ```
-Load `scheduler` and `agent` after enrolment (step 8). User launchd agents run only while user `kvl` is logged in on the GUI (it is, at the console); after a reboot they start after that login. Logs: `$KVL_HOME/var/log/*.log`. (`launchctl bootstrap` is the modern form; on older macOS use `launchctl load -w <plist>`; confirm which works on Big Sur.)
+Load `scheduler` and `agent` after enrolment (step 8). User launchd agents run only while user `kvl` is logged in on the GUI (it is, at the console); after a reboot they start after that login. Logs: `$KVL_HOME/var/log/*.log`. (`launchctl bootstrap` is the modern form; on older macOS use `launchctl load -w <plist>`; `bootstrap` is expected to work on Ventura 13.)
 
 ## 8. Smoke tests, then agent enrolment
 ```bash
