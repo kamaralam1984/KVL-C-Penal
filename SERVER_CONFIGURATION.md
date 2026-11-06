@@ -1,6 +1,6 @@
 # SERVER_CONFIGURATION — Ubuntu vs macOS differences (no secrets)
 
-Do not assume Ubuntu commands work unchanged on macOS (Big Sur). The Mac was inspected read-only on 2026-11-06 (macOS 13.7.8 Ventura, Intel iMac Pro, 4 cores, 8 GB RAM, MacPorts, no Homebrew).
+Do not assume Ubuntu commands work unchanged on macOS. The Mac was inspected read-only on 2026-11-06 (macOS 13.7.8 Ventura, Intel iMac Pro, 4 cores, 8 GB RAM, MacPorts, no Homebrew).
 
 | Topic | Ubuntu dev laptop (verified) | Mac server |
 |---|---|---|
