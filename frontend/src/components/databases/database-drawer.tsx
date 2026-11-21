@@ -4,6 +4,7 @@ import * as React from "react";
 import { Archive, KeyRound, Plus, RefreshCw, RotateCcw, Trash2, UserMinus } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DbBrowser } from "./db-browser";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog, Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
@@ -68,6 +69,7 @@ export function DatabaseDrawer({ dbId, onClose, onSecret }: { dbId: string | nul
               <div className="-mx-1 overflow-x-auto">
                 <TabsList className="min-w-max">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="browse">Browse</TabsTrigger>
                   <TabsTrigger value="users">Users</TabsTrigger>
                   <TabsTrigger value="backups">Backups</TabsTrigger>
                   <TabsTrigger value="history">History</TabsTrigger>
@@ -75,6 +77,7 @@ export function DatabaseDrawer({ dbId, onClose, onSecret }: { dbId: string | nul
                 </TabsList>
               </div>
               <TabsContent value="overview" className="pt-4"><Overview d={d} reload={q.reload} onSecret={onSecret} /></TabsContent>
+              <TabsContent value="browse" className="pt-4">{d.status === "ready" ? <DbBrowser dbId={d.id} /> : <p className="text-sm text-muted">Browsing is available when the database is ready.</p>}</TabsContent>
               <TabsContent value="users" className="pt-4"><Users d={d} reload={q.reload} onSecret={onSecret} /></TabsContent>
               <TabsContent value="backups" className="pt-4"><Backups d={d} reload={q.reload} /></TabsContent>
               <TabsContent value="history" className="pt-4"><History d={d} /></TabsContent>

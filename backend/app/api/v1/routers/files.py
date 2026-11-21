@@ -174,6 +174,16 @@ def search(site: str, body: SearchIn, request: Request, tenant_id: Tid = None, c
     return _run(db, ctx, request, require_tenant(ctx, tenant_id), site, "search", "files.search", {**body.model_dump(), "path": fm.safe_rel(body.path)}, path=body.path)
 
 
+@router.post("/{site}/scan", status_code=202)
+def malware_scan(site: str, request: Request, tenant_id: Tid = None, ctx: Ctx = Depends(require("files:read")), db: Session = Depends(get_db)):
+    """Read-only malware/webshell scan of the site's files (heuristics + ClamAV when installed). Nothing is changed."""
+    from app.core import ratelimit
+
+    tid = require_tenant(ctx, tenant_id)
+    ratelimit.enforce(f"files-scan:{tid}", limit=6, window=3600)
+    return _run(db, ctx, request, tid, site, "scan", "security.scan", {}, audit_action="files.scan")
+
+
 @router.post("/{site}/trash/list", status_code=202)
 def trash_list(site: str, request: Request, tenant_id: Tid = None, ctx: Ctx = Depends(require("files:read")), db: Session = Depends(get_db)):
     return _run(db, ctx, request, require_tenant(ctx, tenant_id), site, "trash_list", "files.trash_list", {})

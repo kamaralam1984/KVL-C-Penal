@@ -19,6 +19,8 @@ import { useToast } from "@/components/ui/toast";
 import { LiveBadge, fmtBytes, fmtDate } from "@/components/resource/helpers";
 import { type Entry, type ListResult, type Quota, type SearchResult, type Site, type StatResult, type TrashItem, AgentTimeout, checkUpload, downloadFile, runOp, uploadFile } from "./api";
 import { DetailsSheet } from "./details-sheet";
+import { EditorDialog } from "./editor-dialog";
+import { ScanPanel } from "./scan-panel";
 import { type EntryActions, EntryList } from "./entry-views";
 import { QuotaMeter } from "./quota-meter";
 
@@ -53,6 +55,7 @@ export function FilesPage() {
   const [del, setDel] = React.useState<Entry | null>(null);
   const [purge, setPurge] = React.useState<TrashItem | "all" | null>(null);
   const [details, setDetails] = React.useState<Entry | null>(null);
+  const [editing, setEditing] = React.useState<Entry | null>(null);
   const [stat, setStat] = React.useState<StatResult>();
   const [statErr, setStatErr] = React.useState<string>();
   const [statLoading, setStatLoading] = React.useState(false);
@@ -148,6 +151,7 @@ export function FilesPage() {
     archive: (e) => setPrompt({ kind: "archive", entry: e }),
     extract: (e) => void act("Extract", () => runOp(siteKey, scope, "extract", { archive: e.path, dest_dir: parentOf(e.path) }), `Extracted ${e.name}`),
     remove: setDel,
+    edit: setEditing,
   };
 
   async function onFiles(files: FileList | null) {
@@ -221,6 +225,7 @@ export function FilesPage() {
           <TabsList>
             <TabsTrigger value="files" className="min-h-11">Files</TabsTrigger>
             <TabsTrigger value="trash" className="min-h-11">Trash</TabsTrigger>
+            <TabsTrigger value="security" className="min-h-11">Security</TabsTrigger>
             <TabsTrigger value="activity" className="min-h-11">Activity</TabsTrigger>
           </TabsList>
 
@@ -288,6 +293,9 @@ export function FilesPage() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="security" className="mt-4">
+            <ScanPanel site={siteKey} scope={scope} canDelete={canDelete} onChanged={() => { reload(); history.reload(); }} />
+          </TabsContent>
           <TabsContent value="trash" className="mt-4">
             <Card>
               <CardHeader title="Trash" description="Deleted items are recoverable until purged." actions={canDelete && trash && trash.length > 0 ? <Button variant="danger" size="sm" onClick={() => setPurge("all")}>Empty trash</Button> : undefined} />
@@ -326,6 +334,7 @@ export function FilesPage() {
         </Tabs>
       </div>
 
+      <EditorDialog entry={editing} site={siteKey} scope={scope} canWrite={canWrite} onClose={() => setEditing(null)} onSaved={() => { reload(); history.reload(); quotaApi.reload(); }} />
       <DetailsSheet entry={details} stat={stat} loading={statLoading} error={statErr} onClose={() => setDetails(null)} a={actions} canWrite={canWrite} canDelete={canDelete} />
       <PromptDialog prompt={prompt} onClose={() => setPrompt(null)} onSubmit={submitPrompt} path={path} />
       <ConfirmDialog open={!!del} onOpenChange={(o) => !o && setDel(null)} destructive title="Move to trash?" description={`“${del?.name}” will be moved to the trash. You can restore it until the trash is emptied.`} confirmLabel="Move to trash" onConfirm={() => del && void act("Delete", () => runOp(siteKey, scope, "delete", { path: del.path, confirm: true }), `Moved ${del.name} to trash`)} />

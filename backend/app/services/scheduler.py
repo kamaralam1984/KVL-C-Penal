@@ -57,6 +57,18 @@ def _webhooks(db: Session) -> Any:
     return deliver_due(db)
 
 
+def _mail(db: Session) -> Any:
+    from app.services.mail import deliver_due as mail_due
+
+    return mail_due(db)
+
+
+def _cron(db: Session) -> Any:
+    from app.services.cron import run_due
+
+    return run_due(db)
+
+
 TASKS: dict[str, Callable[[Session], Any]] = {
     "maintenance": _maintenance,
     "billing": _billing,
@@ -65,10 +77,12 @@ TASKS: dict[str, Callable[[Session], Any]] = {
     "backups": _backups,
     "support": _support,
     "webhooks": _webhooks,
+    "mail": _mail,
+    "cron": _cron,
 }
 
 # Slow sweeps don't need to run every minute.
-EVERY_MINUTES = {"maintenance": 1, "automation": 1, "backups": 1, "billing": 15, "ssl": 60, "support": 5, "webhooks": 1}
+EVERY_MINUTES = {"maintenance": 1, "automation": 1, "backups": 1, "billing": 15, "ssl": 60, "support": 5, "webhooks": 1, "mail": 1, "cron": 1}
 
 
 def run_all(minute: int | None = None) -> dict[str, Any]:

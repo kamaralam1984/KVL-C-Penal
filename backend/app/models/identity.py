@@ -132,6 +132,11 @@ class EmailOutbox(Base, IdMixin):
     tenant_id: Mapped[uuid.UUID | None] = mapped_column(index=True)
     status: Mapped[str] = mapped_column(String(20), default="queued")  # queued | sent | failed
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    last_error: Mapped[str | None] = mapped_column(String(300))
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 Index("ix_audit_tenant_action", AuditEvent.tenant_id, AuditEvent.action)
+Index("ix_email_outbox_status_next", EmailOutbox.status, EmailOutbox.next_attempt_at)

@@ -18,6 +18,7 @@ from app.services.access import get_visible, scope_stmt, tenant_for_create
 from app.services.audit import audit
 from app.services.domains import add_domain, domain_dto
 from app.services.resources import job_view, log_event
+from app.services.site_options import OptionsIn
 from app.services.tenants import consume_quota
 
 router = APIRouter(prefix="/websites", tags=["websites"])
@@ -278,3 +279,96 @@ def usage_history(website_id: uuid.UUID, range: str = "24h", ctx: Ctx = Depends(
     if s.server_id is None:
         return {"site": _agent_site(s), "range": range, "bucket_seconds": monitoring.SITE_BUCKET, "points": []}
     return monitoring.site_usage_series(db, s.server_id, _agent_site(s), range)
+
+
+# ---------------------------------------------------------------- site tools (php, redirects, protected dirs, ip deny, hotlink)
+@router.get("/{website_id}/options")
+def get_options(website_id: uuid.UUID, ctx: Ctx = Depends(require("websites:read")), db: Session = Depends(get_db)):
+    from app.services import site_options as so
+
+    return so.public_view(_site(db, ctx, website_id))
+
+
+@router.put("/{website_id}/options")
+def put_options(website_id: uuid.UUID, body: OptionsIn, request: Request, ctx: Ctx = Depends(require("websites:write")), db: Session = Depends(get_db)):
+    """Validate + store site tools, then re-stage the vhost (nginx -t). Live config changes only via activate + reload."""
+    from app.services import site_options as so
+
+    s = _site(db, ctx, website_id)
+    tenant = _tenant(db, s.tenant_id)
+    before = so.summary(s)
+    r = so.save(db, s, tenant, body, ctx.user.id)  # raises before commit on any validation/state error
+    audit(db, "website.options_changed", actor=ctx.user.id, tenant_id=s.tenant_id, target_type="website", target_id=s.id,
+          detail={"before": before, "after": so.summary(s), "restaged": r["restaged"]}, ip=client_ip(request))
+    db.commit()
+    return {**so.public_view(s), **r}
+
+
+# ---------------------------------------------------------------- site logs + visitor stats (job based, read-only)
+class SiteLogsIn(BaseModel):
+    kind: str = Field("access", pattern="^(access|error)$")
+    page: int = Field(1, ge=1, le=1000)
+    page_size: int = Field(200, ge=1, le=500)
+    contains: str | None = Field(None, pattern=r"^[A-Za-z0-9 ._:/\-?=&%@+,()\[\]]{1,100}$")
+
+
+def _site_job(db: Session, ctx: Ctx, website_id: uuid.UUID, op: str, params: dict[str, Any]) -> dict[str, Any]:
+    from app.core import ratelimit
+    from app.services.jobs import enqueue_job
+
+    s = _site(db, ctx, website_id, sync=False)
+    if not s.server_id or s.provision_state in {"pending_server", "awaiting_domain"}:
+        raise api_error(409, "not_provisioned", "This website has not been provisioned on a server yet, so it has no logs.")
+    ratelimit.enforce(f"site-{op}:{ctx.user.id}", limit=30, window=60)
+    job = enqueue_job(db, s.server_id, op, {"site": svc.site_name(s), **params}, tenant_id=s.tenant_id, requested_by=ctx.user.id)
+    db.commit()
+    return {"job_id": str(job.id), "status": job.status}
+
+
+def _site_job_result(db: Session, ctx: Ctx, website_id: uuid.UUID, job_id: uuid.UUID, op: str) -> tuple[str, dict[str, Any] | None, str | None]:
+    from app.models.infra import AgentJob
+    from app.services.redact import redact_text
+    from app.services.resources import job_ok
+
+    s = _site(db, ctx, website_id, sync=False)
+    job = db.get(AgentJob, job_id)
+    if job is None or job.operation != op or job.tenant_id != s.tenant_id or (job.params or {}).get("site") != svc.site_name(s):
+        raise api_error(404, "not_found", "Request not found.")
+    ok = job_ok(job)
+    if ok is None:
+        return job.status, None, None
+    if not ok:
+        return "failed", None, redact_text(str((job.result or {}).get("message") or job.error or "The server could not read the log."))[:300]
+    return "succeeded", job.result or {}, None
+
+
+@router.post("/{website_id}/logs", status_code=202)
+def request_site_logs(website_id: uuid.UUID, body: SiteLogsIn, ctx: Ctx = Depends(require("websites:read")), db: Session = Depends(get_db)):
+    return _site_job(db, ctx, website_id, "nginx.site_logs", body.model_dump(exclude_none=True))
+
+
+@router.get("/{website_id}/logs/{job_id}")
+def get_site_logs(website_id: uuid.UUID, job_id: uuid.UUID, ctx: Ctx = Depends(require("websites:read")), db: Session = Depends(get_db)):
+    from app.services.redact import redact_text
+
+    st, res, err = _site_job_result(db, ctx, website_id, job_id, "nginx.site_logs")
+    if res is None:
+        return {"status": st, "lines": [], **({"message": err} if err else {})}
+    return {"status": st, "kind": res.get("kind"), "lines": [redact_text(str(x)[:2000]) for x in (res.get("lines") or [])[:500]],
+            "page": res.get("page"), "page_size": res.get("page_size"), "has_more": bool(res.get("has_more")), "total_lines": res.get("total_lines")}
+
+
+@router.post("/{website_id}/stats", status_code=202)
+def request_site_stats(website_id: uuid.UUID, ctx: Ctx = Depends(require("websites:read")), db: Session = Depends(get_db)):
+    return _site_job(db, ctx, website_id, "nginx.site_stats", {})
+
+
+STAT_KEYS = ("requests", "bot_requests", "human_requests", "bytes_out", "unique_visitors", "first_seen", "last_seen", "heatmap", "daily", "top_paths", "top_referrers", "window_bytes")
+
+
+@router.get("/{website_id}/stats/{job_id}")
+def get_site_stats(website_id: uuid.UUID, job_id: uuid.UUID, ctx: Ctx = Depends(require("websites:read")), db: Session = Depends(get_db)):
+    st, res, err = _site_job_result(db, ctx, website_id, job_id, "nginx.site_stats")
+    if res is None:
+        return {"status": st, **({"message": err} if err else {})}
+    return {**{k: res.get(k) for k in STAT_KEYS}, "status_codes": res.get("status") or {}, "status": st}

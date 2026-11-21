@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { Mail, Plus, Send, ShieldCheck, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { RequirePerm, Can, StatusPill, fmtDate } from "@/components/resource/helpers";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -142,13 +142,63 @@ function Team() {
   );
 }
 
+interface MailStatus {
+  transport: { state: "configured" | "not_configured" | "misconfigured"; message?: string; host?: string; port?: number; security?: string; from?: string; auth?: boolean };
+  outbox: Record<string, number>;
+}
+
+function MailSettings() {
+  const toast = useToast();
+  const { data, loading, reload } = useApi<MailStatus>("/settings/mail");
+  const [to, setTo] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  if (loading || !data) return <TableSkeleton rows={3} cols={2} />;
+  const t = data.transport;
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card>
+        <CardHeader title="Outgoing mail (SMTP)" description="Sign-up, OTP, password reset, invitations, ticket and SSL alerts are sent through this server." actions={<Mail className="h-5 w-5 text-primary" aria-hidden />} />
+        <CardBody className="space-y-3 text-sm">
+          <div className="flex items-center gap-2"><span className="text-muted">Status</span><StatusPill status={t.state === "configured" ? "active" : t.state === "misconfigured" ? "failed" : "not_configured"} /></div>
+          {t.state === "configured" ? (
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+              <dt className="text-muted">Server</dt><dd className="text-text">{t.host}:{t.port} ({t.security})</dd>
+              <dt className="text-muted">From</dt><dd className="text-text">{t.from}</dd>
+              <dt className="text-muted">Login</dt><dd className="text-text">{t.auth ? "Yes" : "No"}</dd>
+            </dl>
+          ) : (
+            <p className="rounded-md bg-subtle px-3 py-2 text-xs text-muted">{t.message} Set SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM and SMTP_SECURITY in the backend environment, then restart the backend. Credentials are never stored in the database or shown here.</p>
+          )}
+        </CardBody>
+      </Card>
+      <Card>
+        <CardHeader title="Mail queue" description="Messages are retried with backoff and marked failed after the last attempt." />
+        <CardBody className="space-y-4 text-sm">
+          <div className="grid grid-cols-3 gap-3">
+            {(["queued", "sent", "failed"] as const).map((k) => (
+              <div key={k} className="rounded-lg border border-border p-3"><p className="text-xs text-muted capitalize">{k}</p><p className="text-xl font-semibold text-text tabular-nums">{data.outbox[k] ?? 0}</p></div>
+            ))}
+          </div>
+          <Can perm="settings:write">
+            <form className="flex flex-col gap-2 sm:flex-row sm:items-end" onSubmit={async (e) => { e.preventDefault(); setBusy(true); try { const r = await post<{ status: string; error: string | null }>("/settings/mail/test", to ? { to } : {}); toast(r.status === "sent" ? { title: "Test email sent", tone: "success" } : { title: `Test email ${r.status}`, description: r.error ?? undefined, tone: "danger" }); reload(); } catch (x) { toast({ title: "Test failed", description: (x as ApiError).message, tone: "danger" }); } finally { setBusy(false); } }}>
+              <div className="flex-1"><Field label="Send a test to (blank = you)">{(p) => <Input {...p} type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="you@example.com" />}</Field></div>
+              <Button type="submit" loading={busy} disabled={t.state !== "configured"}><Send className="h-4 w-4" />Send test</Button>
+            </form>
+          </Can>
+        </CardBody>
+      </Card>
+    </div>
+  );
+}
+
 export function SettingsPage() {
   return (
     <RequirePerm perm="settings:read">
-      <PageHeader title="Settings" description="Business rules, roles and the platform team." />
+      <PageHeader title="Settings" description="Business rules, email delivery, roles and the platform team." />
       <Tabs defaultValue="rules">
-        <TabsList className="mb-4 overflow-x-auto"><TabsTrigger value="rules">Business rules</TabsTrigger><TabsTrigger value="roles">Roles</TabsTrigger><TabsTrigger value="team">Team</TabsTrigger></TabsList>
+        <TabsList className="mb-4 overflow-x-auto"><TabsTrigger value="rules">Business rules</TabsTrigger><TabsTrigger value="mail">Email</TabsTrigger><TabsTrigger value="roles">Roles</TabsTrigger><TabsTrigger value="team">Team</TabsTrigger></TabsList>
         <TabsContent value="rules"><BusinessRules /></TabsContent>
+        <TabsContent value="mail"><MailSettings /></TabsContent>
         <TabsContent value="roles"><Roles /></TabsContent>
         <TabsContent value="team"><RequirePerm perm="users:read"><Team /></RequirePerm></TabsContent>
       </Tabs>

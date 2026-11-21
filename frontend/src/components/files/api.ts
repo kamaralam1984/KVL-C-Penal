@@ -144,3 +144,32 @@ export async function uploadFile(site: string, scope: string, dir: string, f: Fi
     onProgress(Math.round(((i + 1) / total) * 100));
   }
 }
+
+/** Text files that the in-browser editor may open (UX filter; the agent still enforces the site sandbox). */
+export const EDITABLE = /\.(php|phtml|html?|css|scss|js|mjs|cjs|ts|tsx|jsx|json|xml|svg|txt|md|ini|conf|env|htaccess|ya?ml|toml|py|rb|sh|sql|csv|log|twig|vue|map|lock)$|^\.htaccess$|^\.user\.ini$|^robots\.txt$/i;
+export const MAX_EDIT = 1024 * 1024;
+
+/** Read a text file through the agent (one-time download handle) and decode as UTF-8; rejects binary content. */
+export async function readText(site: string, scope: string, path: string, onWaiting?: (s: string) => void): Promise<string> {
+  const j = await runOp(site, scope, "read", { path }, onWaiting);
+  const q = scope ? `?tenant_id=${encodeURIComponent(scope)}` : "";
+  const res = await fetch(`/api/v1/files/jobs/${j.id}/download${q}`, { credentials: "include" });
+  if (!res.ok) throw new ApiError(res.status, "read_failed", "Could not read the file.");
+  const buf = await res.arrayBuffer();
+  if (buf.byteLength > MAX_EDIT) throw new ApiError(413, "too_large", "Files over 1 MB cannot be edited in the browser. Download it instead.");
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(buf);
+  } catch {
+    throw new ApiError(415, "binary", "This file is not UTF-8 text and cannot be edited here.");
+  }
+}
+
+/** Save text over an existing file (overwrite upload). */
+export async function saveText(site: string, scope: string, path: string, text: string, onWaiting?: (s: string) => void) {
+  const slash = path.lastIndexOf("/");
+  const dir = slash >= 0 ? path.slice(0, slash) : "";
+  const name = path.slice(slash + 1);
+  const f = new File([text], name, { type: "text/plain" });
+  if (f.size > MAX_EDIT) throw new ApiError(413, "too_large", "Edited content is over 1 MB.");
+  await uploadFile(site, scope, dir, f, true, () => undefined, onWaiting);
+}

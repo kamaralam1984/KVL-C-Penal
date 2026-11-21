@@ -16,6 +16,8 @@ import { useToast } from "@/components/ui/toast";
 import { ApiError, post } from "@/lib/http";
 import { SiteResourceUsage } from "@/components/monitoring/site-resource-usage";
 import { DnsInstructions, type Domain } from "@/components/domains/domains-page";
+import { SiteTools } from "./site-tools";
+import { SiteLogs, SiteStats } from "./site-insights";
 import type { Column, FilterDef } from "@/components/ui/data-table";
 
 interface JobView { id: string; operation: string; status: string; result: Record<string, unknown> | null; error: string | null; finished_at: string | null }
@@ -145,6 +147,26 @@ function WebsiteDetail({ id, onChanged }: { id: string; onChanged: () => void })
         <h3 className="text-sm font-semibold text-text">RAM, CPU and data</h3>
         <SiteResourceUsage websiteId={id} diskQuotaMb={usage.data?.quotas.find((q) => q.resource === "disk_mb")?.limit} />
       </section>
+
+      {site.status === "active" && (
+        <section aria-label="Site tools" className="space-y-2">
+          <h3 className="text-sm font-semibold text-text">Site tools</h3>
+          <SiteTools websiteId={id} runtime={site.runtime_type} runtimeVersion={site.runtime_version} onSaved={() => { w.reload(); activity.reload(); onChanged(); }} />
+        </section>
+      )}
+
+      {!["pending_server", "awaiting_domain"].includes(st) && (
+        <>
+          <section aria-label="Visitor statistics" className="space-y-2">
+            <h3 className="text-sm font-semibold text-text">Visitors</h3>
+            <SiteStats websiteId={id} />
+          </section>
+          <section aria-label="Logs" className="space-y-2">
+            <h3 className="text-sm font-semibold text-text">Logs</h3>
+            <SiteLogs websiteId={id} />
+          </section>
+        </>
+      )}
 
       <section aria-label="Domains" className="space-y-3">
         <h3 className="text-sm font-semibold text-text">Domains</h3>

@@ -7,6 +7,7 @@ import { KpiCard } from "@/components/ui/kpi-card";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { TrendChart } from "@/components/charts/trend-chart";
 import { UsageMeters } from "@/components/dashboard/widgets";
+import { OpsHero } from "@/components/dashboard/ops-hero";
 import { ErrorState } from "@/components/ui/states";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LiveBadge, StatusPill, fmtDate, fmtMoney } from "@/components/resource/helpers";
@@ -117,6 +118,7 @@ export function AdminDashboard() {
       <PageHeader title="Platform overview" description="Tenants, infrastructure, revenue and activity, live from the control plane." actions={<LiveBadge />} />
       {error ? <ErrorState onRetry={reload} /> : loading || !s ? <Loading /> : (
         <div className="space-y-4">
+          <OpsHero servers={s.servers} alerts={s.alerts_open ?? 0} websites={s.websites} domains={s.domains} apps={s.apps} databases={s.databases} ticketsOpen={s.tickets_open} />
           <Tiles>
             <KpiCard label="Customers" value={String(s.tenants?.total ?? 0)} icon={Users} hint={`${s.tenants?.by_status.active ?? 0} active · ${s.tenants?.by_status.trial ?? 0} trial`} />
             <KpiCard label="Servers online" value={`${s.servers?.connected ?? 0}/${s.servers?.total ?? 0}`} icon={ServerCog} hint={s.servers?.total ? "agent heartbeat" : "none registered yet"} />

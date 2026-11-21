@@ -338,3 +338,17 @@ html { -webkit-tap-highlight-color: transparent; }
   background: color-mix(in oklab, var(--surface) 88%, transparent);
   backdrop-filter: saturate(1.4) blur(14px);
 }
+
+/* Glowing card used by the admin operations centre (theme-aware: uses the KVL tokens). */
+.glow-card {
+  position: relative;
+  border-radius: 1rem;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(135deg, color-mix(in oklab, var(--primary) 70%, transparent), color-mix(in oklab, var(--chart-2) 40%, transparent) 45%, var(--border) 80%) border-box;
+  border: 1px solid transparent;
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 8%, transparent), 0 8px 28px -12px color-mix(in oklab, var(--primary) 45%, transparent);
+  transition: box-shadow .2s ease, transform .2s ease;
+}
+a.glow-card:hover { box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 25%, transparent), 0 10px 34px -10px color-mix(in oklab, var(--primary) 60%, transparent); transform: translateY(-1px); }
+@media (prefers-reduced-motion: reduce) { .glow-card, a.glow-card:hover { transition: none; transform: none; } }

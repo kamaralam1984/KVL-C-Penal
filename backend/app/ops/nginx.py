@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.ops import register_op
+from app.ops.site_options import SiteOptions
 
 DOC_ROOT_PREFIX = "/var/www/kvl/"
 SITE_RE = re.compile(r"^[a-z0-9][a-z0-9-]{2,62}$")
@@ -36,6 +37,7 @@ class StageSite(SiteRef):
     runtime: Literal["static", "php", "proxy"] = "static"
     php_version: str | None = Field(default=None, pattern=r"^\d\.\d{1,2}$")
     proxy_port: int | None = Field(default=None, ge=1024, le=65535)
+    options: SiteOptions | None = None
 
     @field_validator("server_names")
     @classmethod
@@ -72,4 +74,17 @@ class RollbackSite(SiteRef):
 
 @register_op("nginx.remove_site", timeout=90, destructive=True)
 class RemoveSite(SiteRef):
+    pass
+
+
+@register_op("nginx.site_logs", timeout=30)
+class SiteLogs(SiteRef):
+    kind: Literal["access", "error"] = "access"
+    page: int = Field(default=1, ge=1, le=1000)
+    page_size: int = Field(default=200, ge=1, le=500)
+    contains: str | None = Field(default=None, pattern=r"^[A-Za-z0-9 ._:/\-?=&%@+,()\[\]]{1,100}$")
+
+
+@register_op("nginx.site_stats", timeout=60)
+class SiteStats(SiteRef):
     pass

@@ -48,6 +48,8 @@ class Website(Base, IdMixin, TimestampMixin):
     config_hash: Mapped[str | None] = mapped_column(String(64))
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     disk_usage_mb: Mapped[int | None] = mapped_column(Integer)
+    # Site tools (PHP settings, redirects, protected dirs, IP deny, hotlink). Password hashes only, never plaintext.
+    options: Mapped[dict[str, Any] | None]
     __table_args__ = (UniqueConstraint("tenant_id", "slug", name="uq_website_tenant_slug"),)
 
 

@@ -1,5 +1,8 @@
 import {
   AppWindow,
+  AlarmClock,
+  AtSign,
+  Bot,
   Archive,
   BadgeDollarSign,
   BarChart3,
@@ -101,6 +104,7 @@ export const ROLES: Record<Role, RoleConfig> = {
       {
         title: "Platform",
         items: [
+          item("assistant", "AI assistant", Bot, "Ask the panel in plain language.", 17),
           item("automation", "Automation", Boxes, "n8n workflows and executions.", 15),
           item("security", "Security", ShieldCheck, "Audit log, API keys and sessions.", 17),
           item("settings", "Settings", Settings, "Platform configuration.", 3),
@@ -126,6 +130,8 @@ export const ROLES: Record<Role, RoleConfig> = {
           item("databases", "Databases", Database, "Provisioned databases.", 8),
           item("applications", "Applications", AppWindow, "PHP, Node.js and Python apps.", 7),
           item("files", "Files", FolderOpen, "Browse and manage site files.", 10),
+          item("cron", "Cron jobs", AlarmClock, "Scheduled requests to customer sites.", 10),
+          item("email", "Email", AtSign, "Business email DNS setup.", 9),
           item("backups", "Backups", Archive, "Backup status and restores.", 11),
           item("ssl", "SSL & DNS", Lock, "Certificates, DNS records and renewals.", 9),
         ],
@@ -150,6 +156,8 @@ export const ROLES: Record<Role, RoleConfig> = {
           item("databases", "Databases", Database, "Your databases.", 12),
           item("applications", "Applications", AppWindow, "Your applications.", 12),
           item("files", "Files", FolderOpen, "Browse and manage your site files.", 12),
+          item("cron", "Cron jobs", AlarmClock, "Scheduled requests to your website.", 12),
+          item("email", "Email", AtSign, "Use your domain for email.", 12),
           item("ssl", "SSL", Lock, "Your certificates.", 12),
           item("backups", "Backups", Archive, "Your backups.", 12),
         ],
@@ -210,9 +218,9 @@ export const NAV_PERM: Record<Role, Record<string, string>> = {
     servers: "servers:read", websites: "websites:read", domains: "domains:read", databases: "databases:read",
     monitoring: "monitoring:read", backups: "backups:read", customers: "tenants:read", resellers: "resellers:read",
     plans: "plans:read", subscriptions: "subscriptions:read", billing: "billing:read", support: "tickets:read",
-    automation: "automation:read", security: "security:read", settings: "settings:read",
+    assistant: "monitoring:read", automation: "automation:read", security: "security:read", settings: "settings:read",
   },
-  hosting: { websites: "websites:read", domains: "domains:read", databases: "databases:read", applications: "apps:read", files: "files:read", backups: "backups:read", ssl: "ssl:read" },
-  customer: { websites: "websites:read", domains: "domains:read", databases: "databases:read", applications: "apps:read", files: "files:read", ssl: "ssl:read", backups: "backups:read", billing: "billing:read", support: "tickets:read" },
+  hosting: { websites: "websites:read", domains: "domains:read", databases: "databases:read", applications: "apps:read", files: "files:read", cron: "websites:read", email: "dns:read", backups: "backups:read", ssl: "ssl:read" },
+  customer: { websites: "websites:read", domains: "domains:read", databases: "databases:read", applications: "apps:read", files: "files:read", cron: "websites:read", email: "dns:read", ssl: "ssl:read", backups: "backups:read", billing: "billing:read", support: "tickets:read" },
   reseller: { clients: "clients:read", packages: "packages:read", commissions: "commissions:read", reports: "clients:read", branding: "branding:read", settings: "branding:read" },
 };

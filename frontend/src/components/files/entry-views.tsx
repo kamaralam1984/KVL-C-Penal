@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Archive, Download, File as FileIcon, FileArchive, Folder, FolderInput, Info, Link2, MoreVertical, PackageOpen, Pencil, Trash2 } from "lucide-react";
-import type { Entry } from "./api";
+import { Archive, Code2, Download, File as FileIcon, FileArchive, Folder, FolderInput, Info, Link2, MoreVertical, PackageOpen, Pencil, Trash2 } from "lucide-react";
+import { type Entry, EDITABLE } from "./api";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { IconButton } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +17,7 @@ export interface EntryActions {
   archive: (e: Entry) => void;
   extract: (e: Entry) => void;
   remove: (e: Entry) => void;
+  edit: (e: Entry) => void;
 }
 
 export const isArchive = (e: Entry) => e.type === "file" && /\.(zip|tar\.gz|tgz|tar)$/i.test(e.name);
@@ -42,6 +43,7 @@ export function EntryMenu({ e, a, canWrite, canDelete }: { e: Entry; a: EntryAct
         {e.type === "file" && <MenuItem icon={Download} onSelect={() => a.download(e)}>Download</MenuItem>}
         {canWrite && e.type !== "other" && (
           <>
+            {e.type === "file" && EDITABLE.test(e.name) && <MenuItem icon={Code2} onSelect={() => a.edit(e)}>Edit</MenuItem>}
             <MenuItem icon={Pencil} onSelect={() => a.rename(e)}>Rename</MenuItem>
             <MenuItem icon={FolderInput} onSelect={() => a.move(e)}>Move</MenuItem>
             {e.type !== "symlink" && <MenuItem icon={Archive} onSelect={() => a.archive(e)}>Archive…</MenuItem>}

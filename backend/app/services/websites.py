@@ -105,6 +105,11 @@ def start_stage(db: Session, site: Website, tenant: Tenant, actor: uuid.UUID | N
         params["php_version"] = site.runtime_version
     if site.runtime_type == "proxy":
         params["proxy_port"] = site.proxy_port
+    from app.services.site_options import stage_params
+
+    opts = stage_params(site)
+    if opts:
+        params["options"] = opts
     job = enqueue_job(db, server.id, "nginx.stage_site", params, tenant_id=site.tenant_id, requested_by=actor)
     site.stage_job_id, site.provision_state, site.provision_message = job.id, "queued", "Validating proposed Nginx configuration."
     log_event(db, site.tenant_id, "website", site.id, actor, "website.stage", "Nginx configuration staging requested")

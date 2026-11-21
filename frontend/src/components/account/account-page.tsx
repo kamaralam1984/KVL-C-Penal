@@ -18,6 +18,7 @@ import { EmptyState, ErrorState } from "@/components/ui/states";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { useApi } from "@/hooks/use-api";
 import { ApiError, del, post } from "@/lib/http";
+import { LinkedSignIns } from "./linked-signins";
 import { ApiKeysPanel } from "@/components/security/api-keys-panel";
 import { WebhooksPanel } from "@/components/security/webhooks-panel";
 
@@ -266,7 +267,7 @@ export function AccountPage() {
           <TabsTrigger value="developer">Developer</TabsTrigger>
         </TabsList>
         <TabsContent value="profile"><ProfileTab /></TabsContent>
-        <TabsContent value="security" className="space-y-4"><ChangePassword /><TwoFactor /></TabsContent>
+        <TabsContent value="security" className="space-y-4"><ChangePassword /><TwoFactor /><LinkedSignIns /></TabsContent>
         <TabsContent value="sessions"><Sessions /></TabsContent>
         <TabsContent value="activity"><History /></TabsContent>
         <TabsContent value="developer"><Developer /></TabsContent>

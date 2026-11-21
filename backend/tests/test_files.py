@@ -238,3 +238,35 @@ def test_no_server_means_honest_error(env, db):
     db.commit()
     r = env["a"].post(f"{API}/acme/list", json={})
     assert r.status_code == 409 and r.json()["error"]["code"] == "not_configured"
+
+
+def test_editor_save_overwrites_existing_text_file_and_refuses_without_flag(env):
+    """In-browser editor flow: read -> edit -> save as overwrite upload; plain upload never clobbers."""
+    target = env["dir"] / ROOT_A / "index.php"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("<?php echo 'old';\n")
+    new = "<?php echo 'new';\n// edited in KVL Panel\n"
+    body = {"path": "index.php", "content_b64": b64(new.encode()), "upload_id": "edit-" + uuid.uuid4().hex[:10], "total_size": len(new.encode())}
+    finish(env, env["a"], do(env, env["a"], "acme", "upload", body))
+    assert target.read_text() == "<?php echo 'old';\n"  # no overwrite flag -> unchanged
+    body = {**body, "upload_id": "edit-" + uuid.uuid4().hex[:10], "overwrite": True}
+    d = finish(env, env["a"], do(env, env["a"], "acme", "upload", body))
+    assert d["status"] == "succeeded", d
+    assert target.read_text() == new
+    # the other tenant cannot save into this site
+    assert env["b"].post(f"{API}/acme/upload", json=body).status_code == 404
+
+
+def test_malware_scan_end_to_end_and_isolated(env):
+    root = env["dir"] / ROOT_A
+    (root / "wp-content/uploads").mkdir(parents=True, exist_ok=True)
+    (root / "wp-content/uploads/shell.php").write_text("<?php system($_GET['c']); ?>")
+    (root / "index.php").write_text("<?php echo 'ok';")
+    d = finish(env, env["a"], do(env, env["a"], "acme", "scan"))
+    assert d["status"] == "succeeded", d
+    res = d["result"]
+    assert res["verdict"] == "suspicious" and {f["path"] for f in res["findings"]} == {"wp-content/uploads/shell.php"}
+    assert "system(" not in str(res)
+    assert (root / "wp-content/uploads/shell.php").exists()  # scan never changes files
+    assert env["db"].scalar(select(AuditEvent).where(AuditEvent.action == "files.scan")) is not None
+    assert env["b"].post(f"{API}/acme/scan").status_code == 404

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { DevOtpHint, FormError, PasswordInput, PasswordMeter, useCooldown } from "./bits";
+import { SsoButtons, SsoTwoFactor, ssoErrorText } from "./sso";
 import { ApiError, get, post } from "@/lib/http";
 import { homeFor, useAuth } from "@/components/providers/auth-provider";
 import { Segmented } from "@/components/ui/tabs";
@@ -85,8 +86,11 @@ export function LoginForm() {
     if (totpRequired) setNeedTotp(true);
   }, [totpRequired]);
 
+  if (sp.get("sso") === "2fa") return <SsoTwoFactor onDone={finish} />;
+
   return (
     <div className="space-y-5">
+      {sp.get("sso_error") && <p role="alert" className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{ssoErrorText(sp.get("sso_error"))}</p>}
       {sp.get("reset") && <p role="status" className="rounded-md bg-success/10 px-3 py-2 text-sm text-success">Password updated. Sign in with your new password.</p>}
       <Segmented label="Sign-in method" value={mode} onChange={setMode} options={[{ value: "password", label: "Password" }, { value: "code", label: "Email code" }]} />
       {mode === "password" ? (
@@ -127,6 +131,7 @@ export function LoginForm() {
           )}
         </form>
       )}
+      <SsoButtons />
     </div>
   );
 }

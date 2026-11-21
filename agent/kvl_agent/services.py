@@ -42,12 +42,23 @@ def _installed(spec: dict) -> bool:
 
 def _running_names() -> list[str]:
     names = []
-    for p in psutil.process_iter(["name"]):
+    for p in psutil.process_iter(["name", "cmdline"]):
         try:
             n = p.info.get("name")
             if n:
                 names.append(n)
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
+
+            # macOS may report the PM2 daemon process name as "node".
+            # Identify PM2 only by its distinctive daemon command line.
+            cmdline = p.info.get("cmdline") or []
+            first_arg = cmdline[0] if cmdline else ""
+            if (
+                isinstance(first_arg, str)
+                and first_arg.startswith("PM2 ")
+                and "God Daemon" in first_arg
+            ):
+                names.append(first_arg)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
     return names
 

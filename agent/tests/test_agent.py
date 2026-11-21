@@ -261,6 +261,34 @@ def test_services_not_installed_is_not_configured(monkeypatch):
     assert "failed" not in res.values()
 
 
+def test_pm2_detector_recognizes_macos_god_daemon(monkeypatch):
+    from types import SimpleNamespace
+
+    daemon = SimpleNamespace(info={
+        "name": "node",
+        "cmdline": ["PM2 v7.1.1: God Daemon (/opt/local/var/lib/kvlhost/.pm2)", ""],
+    })
+    monkeypatch.setattr("kvl_agent.services.psutil.process_iter", lambda attrs: [daemon])
+    monkeypatch.setattr("kvl_agent.services._installed", lambda spec: True)
+
+    result = check_services(["pm2"])
+    assert result[0]["state"] == "running"
+
+
+def test_pm2_detector_does_not_mistake_regular_node_for_pm2(monkeypatch):
+    from types import SimpleNamespace
+
+    node_app = SimpleNamespace(info={
+        "name": "node",
+        "cmdline": ["node /opt/local/www/nodejs-apps/test-api-v22/app.js", ""],
+    })
+    monkeypatch.setattr("kvl_agent.services.psutil.process_iter", lambda attrs: [node_app])
+    monkeypatch.setattr("kvl_agent.services._installed", lambda spec: True)
+
+    result = check_services(["pm2"])
+    assert result[0]["state"] == "stopped"
+
+
 def test_monitoring_operations_registered(tmp_path):
     c = make_ctx(tmp_path)
     r = execute_job({"operation": "agent.service_status", "params": {}}, c)

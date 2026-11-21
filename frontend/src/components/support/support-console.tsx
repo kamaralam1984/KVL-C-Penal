@@ -9,6 +9,7 @@ import { TicketList } from "./ticket-list";
 import { KbPanel } from "./kb-panel";
 import { AnnouncementsPanel } from "./announcements-panel";
 import { ReportsPanel, StaffPanel } from "./staff-panel";
+import { SupportAiBox } from "@/components/ai/support-ai-box";
 
 /** Agent console for /admin/support. Staff-only tabs render only for roles that hold tickets:manage. */
 export function SupportConsole() {
@@ -40,6 +41,7 @@ export function CustomerSupport() {
   return (
     <RequirePerm perm="tickets:read">
       <PageHeader title="Support" description="Open a ticket, follow replies and search the help centre." />
+      <SupportAiBox />
       <Tabs defaultValue="tickets">
         <TabsList className="overflow-x-auto">
           <TabsTrigger value="tickets">My tickets</TabsTrigger>

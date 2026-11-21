@@ -43,6 +43,34 @@ class Settings(BaseSettings):
     n8n_base_url: str = ""  # e.g. http://127.0.0.1:5678 (private network only)
     razorpay_api_base: str = "https://api.razorpay.com/v1"
 
+    # Outgoing mail (SMTP). Empty host = "not_configured": mail stays queued in email_outbox, nothing is faked as sent.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""  # e.g. "KVL Panel <no-reply@example.com>"
+    smtp_security: str = "starttls"  # starttls | ssl | none (none only allowed for 127.0.0.1/localhost relays)
+    smtp_timeout_seconds: float = 15.0
+    smtp_max_attempts: int = 5
+    smtp_batch_size: int = 50
+
+    # AI features (Claude). Empty key and no SDK = "not_configured"; nothing is simulated.
+    anthropic_api_key: str = ""
+    ai_model: str = "claude-opus-5-5"
+    ai_effort: str = "medium"  # low | medium | high | xhigh | max
+    ai_max_tool_turns: int = 6
+
+    # Single sign-on (OpenID Connect). Empty client id = provider hidden ("not_configured").
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+    microsoft_oauth_client_id: str = ""
+    microsoft_oauth_client_secret: str = ""
+    microsoft_oauth_tenant: str = "organizations"  # organizations | common | <tenant-guid>
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.smtp_host and self.smtp_from)
+
     @property
     def is_dev(self) -> bool:
         return self.env in {"dev", "test"}

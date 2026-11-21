@@ -4,6 +4,7 @@ import * as React from "react";
 import { ChevronLeft, ChevronRight, Eye, EyeOff, Play, RefreshCw, RotateCcw, Rocket, Square, Trash2 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger, Segmented } from "@/components/ui/tabs";
+import { WordPressToolkit } from "./wordpress-toolkit";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -79,6 +80,7 @@ export function AppDrawer({ appId, onClose }: { appId: string | null; onClose: (
                 <TabsList className="min-w-max">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="deployments">Deployments</TabsTrigger>
+                  {a.runtime === "wordpress" && a.current_release && <TabsTrigger value="wordpress">WordPress</TabsTrigger>}
                   <TabsTrigger value="env">Environment</TabsTrigger>
                   {a.controllable && <TabsTrigger value="process">Process</TabsTrigger>}
                   {a.controllable && <TabsTrigger value="logs">Logs</TabsTrigger>}
@@ -86,6 +88,7 @@ export function AppDrawer({ appId, onClose }: { appId: string | null; onClose: (
               </div>
               <TabsContent value="overview" className="pt-4"><Overview a={a} reload={app.reload} /></TabsContent>
               <TabsContent value="deployments" className="pt-4"><Deployments a={a} reload={app.reload} /></TabsContent>
+              {a.runtime === "wordpress" && a.current_release && <TabsContent value="wordpress" className="pt-4"><WordPressToolkit appId={a.id} /></TabsContent>}
               <TabsContent value="env" className="pt-4"><EnvEditor a={a} /></TabsContent>
               {a.controllable && <TabsContent value="process" className="pt-4"><ProcessTab a={a} reload={app.reload} /></TabsContent>}
               {a.controllable && <TabsContent value="logs" className="pt-4"><LogsTab a={a} /></TabsContent>}
