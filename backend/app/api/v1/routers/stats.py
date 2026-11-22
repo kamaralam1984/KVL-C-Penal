@@ -12,7 +12,7 @@ from app.models.billing import Invoice, Subscription
 from app.models.hosting import Application, CustomerDatabase, Domain, Website
 from app.models.identity import AuditEvent, User
 from app.models.infra import AgentJob, Server
-from app.models.monitoring import Alert
+from app.models.monitoring import Alert, MetricSample, ServiceStatus
 from app.models.ssl import Certificate
 from app.models.support import Ticket
 from app.models.tenant import Tenant, TenantQuota
@@ -32,6 +32,58 @@ def _daily(db: Session, col, where, days: int = 14) -> list[dict]:
     return [{"day": (start + timedelta(days=i)).date().isoformat(), "count": rows.get((start + timedelta(days=i)).date(), 0)} for i in range(days)]
 
 
+OPTIONAL_SERVICES = {"pm2"}  # may legitimately be stopped when no Node apps are deployed
+
+
+def _health(servers_total: int, connected: int, alerts: list[Alert], services: list[dict]) -> dict:
+    """Explainable 0-100 score: start at 100 and subtract a fixed penalty per problem. None when no server exists."""
+    if not servers_total:
+        return {"score": None, "factors": []}
+    factors = []
+    if connected < servers_total:
+        factors.append({"label": f"{servers_total - connected} server(s) not reporting", "impact": -30 * (servers_total - connected)})
+    for a in alerts:
+        factors.append({"label": a.message, "impact": -20 if a.severity == "critical" else -8})
+    for sv in services:
+        if sv["state"] == "failed" or (sv["state"] == "stopped" and sv["name"] not in OPTIONAL_SERVICES):
+            factors.append({"label": f"{sv['name']} is {sv['state']}", "impact": -10})
+    return {"score": max(0, 100 + sum(f["impact"] for f in factors)), "factors": factors}
+
+
+def _resources(db: Session, servers: list[Server], now: datetime) -> list[dict]:
+    out = []
+    for s in servers:
+        if s.status != "registered":
+            continue
+        recent = db.scalars(
+            select(MetricSample).where(MetricSample.server_id == s.id, MetricSample.resolution == "raw", MetricSample.ts >= now - timedelta(hours=2)).order_by(MetricSample.ts)
+        ).all()
+        last = recent[-1] if recent else None
+        step = max(1, len(recent) // 40)
+        out.append({
+            "server": s.name,
+            "age_seconds": int((now - last.ts).total_seconds()) if last else None,
+            "cpu": last and last.cpu_percent, "mem": last and last.mem_percent, "swap": last and last.swap_percent,
+            "disk": last and last.disk_max_percent, "load1": last and last.load1,
+            "cpu_count": (last.detail or {}).get("cpu_count") if last else None,
+            "uptime_seconds": last and last.uptime_seconds,
+            "rx_bps": last and last.net_rx_bps, "tx_bps": last and last.net_tx_bps,
+            "spark": [{"t": m.ts, "cpu": m.cpu_percent, "mem": m.mem_percent} for m in recent[::step]],
+        })
+    return sorted(out, key=lambda r: (r["age_seconds"] is None, r["age_seconds"] or 0))  # freshest reporting server first
+
+
+def _services(db: Session, servers: list[Server]) -> list[dict]:
+    names = {s.id: s.name for s in servers}
+    latest: dict = {}
+    for st in db.scalars(select(ServiceStatus).order_by(ServiceStatus.checked_at)):
+        latest[(st.server_id, st.name)] = st
+    return sorted(
+        ({"server": names.get(k[0], "?"), "name": st.name, "state": st.state, "checked_at": st.checked_at} for k, st in latest.items()),
+        key=lambda x: (x["server"], x["name"]),
+    )
+
+
 @router.get("/dashboard")
 def dashboard(ctx: Ctx = Depends(get_ctx), db: Session = Depends(get_db)):
     now = datetime.now(UTC)
@@ -44,8 +96,20 @@ def dashboard(ctx: Ctx = Depends(get_ctx), db: Session = Depends(get_db)):
         connected = sum(
             1 for s in servers if s.status == "registered" and s.last_heartbeat_at and (now - s.last_heartbeat_at).total_seconds() < 180
         )
+        open_alerts = db.scalars(select(Alert).where(Alert.state != "resolved").order_by(Alert.opened_at.desc())).all()
+        services = _services(db, servers)
+        events = db.scalars(select(AuditEvent).order_by(AuditEvent.created_at.desc()).limit(10)).all()
+        actor_ids = list({e.actor_user_id for e in events if e.actor_user_id})
+        names = dict(db.execute(select(User.id, User.name).where(User.id.in_(actor_ids))).all()) if actor_ids else {}
         return {
             "scope": "platform",
+            "health": _health(len(servers), connected, open_alerts, services),
+            "alerts": [
+                {"id": str(a.id), "severity": a.severity, "metric": a.metric, "message": a.message, "state": a.state, "opened_at": a.opened_at}
+                for a in open_alerts[:6]
+            ],
+            "resources": _resources(db, servers, now),
+            "services": services,
             "tenants": {"total": sum(by_status.values()), "by_status": by_status},
             "users": _count(db, User),
             "servers": {"total": len(servers), "connected": connected},
@@ -61,8 +125,8 @@ def dashboard(ctx: Ctx = Depends(get_ctx), db: Session = Depends(get_db)):
             "jobs_failed_24h": _count(db, AgentJob, AgentJob.status.in_(("failed", "timed_out")), AgentJob.created_at >= now - timedelta(hours=24)),
             "signups_14d": _daily(db, Tenant.created_at, []),
             "recent_activity": [
-                {"id": str(a.id), "action": a.action, "created_at": a.created_at, "target_type": a.target_type}
-                for a in db.scalars(select(AuditEvent).order_by(AuditEvent.created_at.desc()).limit(8))
+                {"id": str(a.id), "action": a.action, "created_at": a.created_at, "target_type": a.target_type, "actor": names.get(a.actor_user_id) if a.actor_user_id else None}
+                for a in events
             ],
         }
 

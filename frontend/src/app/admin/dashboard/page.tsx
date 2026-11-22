@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AdminDashboard } from "@/components/dashboard/live-dashboards";
+import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
 
 export const metadata: Metadata = { title: "Dashboard" };
 

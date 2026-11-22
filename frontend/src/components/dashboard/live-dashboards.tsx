@@ -1,16 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Activity, AlertTriangle, AppWindow, Archive, CalendarClock, CreditCard, Database, Globe, Headphones, Lock, Receipt, ServerCog, Users, Waypoints } from "lucide-react";
+import { Activity, AlertTriangle, AppWindow, Archive, CalendarClock, Database, Globe, Headphones, Lock, Receipt, ServerCog, Waypoints } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { TrendChart } from "@/components/charts/trend-chart";
 import { UsageMeters } from "@/components/dashboard/widgets";
-import { OpsHero } from "@/components/dashboard/ops-hero";
 import { ErrorState } from "@/components/ui/states";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LiveBadge, StatusPill, fmtDate, fmtMoney } from "@/components/resource/helpers";
+import { LiveBadge, StatusPill, fmtDate } from "@/components/resource/helpers";
 import { Button } from "@/components/ui/button";
 import { AnimatedIcon } from "@/components/ui/animated-icon";
 import { useApi } from "@/hooks/use-api";
@@ -58,43 +56,6 @@ function Loading() {
   );
 }
 
-function Activity14({ rows }: { rows: { day: string; count: number }[] }) {
-  return (
-    <TrendChart
-      title="New customers"
-      unit="per day"
-      description="Sign-ups and tenants created, last 14 days."
-      kind="bar"
-      data={rows.map((r) => ({ t: new Date(r.day).toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" }), signups: r.count }))}
-      series={[{ key: "signups", label: "New customers", color: "var(--chart-1)" }]}
-      summary={`${rows.reduce((a, r) => a + r.count, 0)} new customers in the last 14 days.`}
-    />
-  );
-}
-
-function ActivityFeed({ items }: { items: NonNullable<Stats["recent_activity"]> }) {
-  return (
-    <Card>
-      <CardHeader title="Recent activity" actions={<LiveBadge />} />
-      {items.length === 0 ? (
-        <CardBody><p className="text-sm text-muted">No activity recorded yet.</p></CardBody>
-      ) : (
-        <ol className="border-t border-border">
-          {items.map((a) => (
-            <li key={a.id} className="flex gap-3 border-b border-border px-5 py-3 last:border-0">
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" aria-hidden />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-mono text-sm text-text">{a.action}</p>
-                <p className="text-xs text-faint">{fmtDate(a.created_at)}{a.target_type ? ` · ${a.target_type}` : ""}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      )}
-    </Card>
-  );
-}
-
 function QuickLinks({ items }: { items: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }[] }) {
   return (
     <Card>
@@ -108,36 +69,6 @@ function QuickLinks({ items }: { items: { href: string; label: string; icon: Rea
         ))}
       </CardBody>
     </Card>
-  );
-}
-
-export function AdminDashboard() {
-  const { data: s, loading, error, reload } = useStats();
-  return (
-    <>
-      <PageHeader title="Platform overview" description="Tenants, infrastructure, revenue and activity, live from the control plane." actions={<LiveBadge />} />
-      {error ? <ErrorState onRetry={reload} /> : loading || !s ? <Loading /> : (
-        <div className="space-y-4">
-          <OpsHero servers={s.servers} alerts={s.alerts_open ?? 0} websites={s.websites} domains={s.domains} apps={s.apps} databases={s.databases} ticketsOpen={s.tickets_open} />
-          <Tiles>
-            <KpiCard label="Customers" value={String(s.tenants?.total ?? 0)} icon={Users} hint={`${s.tenants?.by_status.active ?? 0} active · ${s.tenants?.by_status.trial ?? 0} trial`} />
-            <KpiCard label="Servers online" value={`${s.servers?.connected ?? 0}/${s.servers?.total ?? 0}`} icon={ServerCog} hint={s.servers?.total ? "agent heartbeat" : "none registered yet"} />
-            <KpiCard label="Websites" value={String(s.websites)} icon={Globe} hint={`${s.domains} domains`} />
-            <KpiCard label="Revenue this month" value={fmtMoney(s.revenue_month_paise)} icon={CreditCard} hint="verified payments only" />
-          </Tiles>
-          <Tiles>
-            <KpiCard label="Open alerts" value={String(s.alerts_open ?? 0)} icon={AlertTriangle} hint="monitoring" />
-            <KpiCard label="Open tickets" value={String(s.tickets_open)} icon={Headphones} />
-            <KpiCard label="Certificates expiring ≤30d" value={String(s.certs_expiring_30d)} icon={Lock} />
-            <KpiCard label="Failed jobs (24h)" value={String(s.jobs_failed_24h ?? 0)} icon={Activity} deltaGoodWhen="down" />
-          </Tiles>
-          <div className="grid gap-4 xl:grid-cols-3">
-            <div className="xl:col-span-2">{s.signups_14d && <Activity14 rows={s.signups_14d} />}</div>
-            <ActivityFeed items={s.recent_activity ?? []} />
-          </div>
-        </div>
-      )}
-    </>
   );
 }
 
