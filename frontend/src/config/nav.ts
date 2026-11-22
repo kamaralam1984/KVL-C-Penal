@@ -28,6 +28,7 @@ import {
   Activity,
   Package,
   type LucideIcon,
+  MonitorDot,
 } from "lucide-react";
 
 export type Role = "admin" | "hosting" | "customer" | "reseller";
@@ -77,7 +78,10 @@ export const ROLES: Record<Role, RoleConfig> = {
     mobileTabs: ["dashboard", "servers", "websites", "customers"],
     sections: [
       {
-        items: [item("dashboard", "Dashboard", LayoutDashboard, "Platform overview and recent activity.", 1, true)],
+        items: [
+          item("dashboard", "Dashboard", LayoutDashboard, "Platform overview and recent activity.", 1, true),
+          item("ops-center", "Operations centre", MonitorDot, "Live full-page operations dashboard.", 17, true),
+        ],
       },
       {
         title: "Infrastructure",
@@ -218,7 +222,7 @@ export const NAV_PERM: Record<Role, Record<string, string>> = {
     servers: "servers:read", websites: "websites:read", domains: "domains:read", databases: "databases:read",
     monitoring: "monitoring:read", backups: "backups:read", customers: "tenants:read", resellers: "resellers:read",
     plans: "plans:read", subscriptions: "subscriptions:read", billing: "billing:read", support: "tickets:read",
-    assistant: "monitoring:read", automation: "automation:read", security: "security:read", settings: "settings:read",
+    assistant: "monitoring:read", "ops-center": "monitoring:read", automation: "automation:read", security: "security:read", settings: "settings:read",
   },
   hosting: { websites: "websites:read", domains: "domains:read", databases: "databases:read", applications: "apps:read", files: "files:read", cron: "websites:read", email: "dns:read", backups: "backups:read", ssl: "ssl:read" },
   customer: { websites: "websites:read", domains: "domains:read", databases: "databases:read", applications: "apps:read", files: "files:read", cron: "websites:read", email: "dns:read", ssl: "ssl:read", backups: "backups:read", billing: "billing:read", support: "tickets:read" },

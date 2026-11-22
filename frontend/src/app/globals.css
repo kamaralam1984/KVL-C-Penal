@@ -352,3 +352,33 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 a.glow-card:hover { box-shadow: 0 0 0 1px color-mix(in oklab, var(--primary) 25%, transparent), 0 10px 34px -10px color-mix(in oklab, var(--primary) 60%, transparent); transform: translateY(-1px); }
 @media (prefers-reduced-motion: reduce) { .glow-card, a.glow-card:hover { transition: none; transform: none; } }
+
+/* Operations centre: always-dark violet look (scoped to the page, independent of the app theme). */
+.ops-theme {
+  color-scheme: dark;
+  --text: #eeeaff;
+  --muted: #b7b0e3;
+  --faint: #8c85bd;
+  --surface: rgb(27 16 61 / 0.78);
+  --subtle: rgb(167 139 250 / 0.13);
+  --border: rgb(167 139 250 / 0.22);
+  --primary: #8b5cf6;
+  --primary-soft: rgb(139 92 246 / 0.24);
+  --primary-fg: #ffffff;
+  --chart-1: #a78bfa;
+  --chart-2: #60a5fa;
+  --chart-3: #e879f9;
+  --success: #4ade80;
+  --info: #60a5fa;
+  --warning: #fbbf24;
+  --danger: #fb7185;
+  color: var(--text);
+  border-radius: 1.25rem;
+  padding: 1rem;
+  background:
+    radial-gradient(60rem 30rem at 85% -10%, rgb(168 85 247 / 0.35), transparent 60%),
+    radial-gradient(50rem 30rem at -10% 110%, rgb(59 130 246 / 0.22), transparent 60%),
+    linear-gradient(160deg, #150b33 0%, #1d0f45 45%, #2a0f55 100%);
+}
+@media (min-width: 640px) { .ops-theme { padding: 1.25rem; } }
+.ops-theme .glow-card { backdrop-filter: blur(6px); }

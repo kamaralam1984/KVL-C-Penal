@@ -88,3 +88,14 @@ def dashboard(ctx: Ctx = Depends(get_ctx), db: Session = Depends(get_db)):
         "backups_verified": _count(db, BackupRecord, BackupRecord.tenant_id == t, BackupRecord.verification_status == "verified"),
         "last_backup_at": db.scalar(select(func.max(BackupRecord.created_at)).where(BackupRecord.tenant_id == t, BackupRecord.status == "completed")),
     }
+
+
+@router.get("/ops-center")
+def ops_center(ctx: Ctx = Depends(get_ctx), db: Session = Depends(get_db)):
+    """Full-page operations centre. Platform staff only: it aggregates every tenant."""
+    from app.core.deps import api_error
+    from app.services import ops_center as svc
+
+    if not ctx.is_platform or "monitoring:read" not in ctx.permissions:
+        raise api_error(403, "forbidden", "You do not have permission to perform this action.")
+    return svc.build(db)

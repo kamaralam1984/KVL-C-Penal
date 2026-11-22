@@ -30,7 +30,8 @@ export function AnimatedIcon({
       className={cn("inline-grid shrink-0 place-items-center", className)}
       whileHover={{ scale: 1.18, rotate: -6 }}
       animate={active ? { scale: [1, 1.15, 1] } : { scale: 1 }}
-      transition={{ type: "spring", stiffness: 420, damping: 18 }}
+      // A spring cannot run the three-keyframe "pulse"; the active pulse uses a short tween instead.
+      transition={active ? { duration: 0.35, ease: "easeOut" } : { type: "spring", stiffness: 420, damping: 18 }}
     >
       <Icon size={size} strokeWidth={active ? 2.3 : 1.9} className={idleCls[idle]} />
     </motion.span>
